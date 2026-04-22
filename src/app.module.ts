@@ -1,7 +1,12 @@
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter'
+import { ExpressAdapter } from '@bull-board/express'
+import { BullBoardModule } from '@bull-board/nestjs'
+import * as expressBasicAuth from 'express-basic-auth'
 
+import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
 import { WebhookModule } from '@/webhook/webhook.module'
 
 import { appConfig } from './config/app.config'
@@ -31,6 +36,51 @@ import { DatabaseModule } from './database/database.module'
                 },
             }),
             inject: [ConfigService],
+        }),
+
+        BullBoardModule.forRootAsync({
+            useFactory: (configService: ConfigService) => ({
+                route: '/queues',
+                adapter: ExpressAdapter,
+                middleware: expressBasicAuth({
+                    users: {
+                        [configService.getOrThrow('app.bullBoardUser')]:
+                            configService.getOrThrow('app.bullBoardPassword'),
+                    },
+                    challenge: true,
+                }),
+                options: {
+                    uiConfig: {
+                        boardTitle: 'Discord Webhook Delivery', // название в заголовке
+                        boardLogo: {
+                            path: 'https://discord.com/assets/discord-mark-blue.svg', // логотип
+                            width: 30,
+                            height: 30,
+                        },
+                        miscLinks: [
+                            {
+                                text: 'Swagger',
+                                url: '/api', // ссылка на твой Swagger
+                            },
+                        ],
+                        favIcon: {
+                            default: 'https://discord.com/assets/favicon.ico',
+                            alternative: 'https://discord.com/assets/favicon.ico',
+                        },
+                    },
+                },
+            }),
+            inject: [ConfigService],
+        }),
+
+        BullBoardModule.forFeature({
+            name: WEBHOOK_QUEUE,
+            adapter: BullMQAdapter,
+        }),
+
+        BullBoardModule.forFeature({
+            name: DLQ_QUEUE,
+            adapter: BullMQAdapter,
         }),
 
         DatabaseModule,
