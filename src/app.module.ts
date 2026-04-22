@@ -1,5 +1,6 @@
+import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
+import { ConfigModule, ConfigService } from '@nestjs/config'
 
 import { appConfig } from './config/app.config'
 import { envSchema } from './config/env.schema'
@@ -18,6 +19,16 @@ import { DatabaseModule } from './database/database.module'
                 }
                 return result.data
             },
+        }),
+
+        BullModule.forRootAsync({
+            useFactory: (config: ConfigService) => ({
+                connection: {
+                    host: config.get<string>('redis.host'),
+                    port: config.get<number>('redis.port'),
+                },
+            }),
+            inject: [ConfigService],
         }),
 
         DatabaseModule,

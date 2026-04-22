@@ -1,14 +1,16 @@
-import {
-    pgTable,
-    index,
-    check,
-    bigint,
-    timestamp,
-    jsonb,
-    smallint,
-    pgEnum,
-} from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
+import {
+    bigint,
+    check,
+    index,
+    jsonb,
+    pgEnum,
+    pgTable,
+    smallint,
+    timestamp,
+} from 'drizzle-orm/pg-core'
+
+import { type IDiscordEmbed } from '@/webhook/interfaces/discord-embed.interface'
 
 export const eventStates = pgEnum('event_states', ['PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED'])
 export const eventVariants = pgEnum('event_variants', ['USER_REGISTERED'])
@@ -25,11 +27,11 @@ export const outbox = pgTable(
             maxValue: 9223372036854775807,
             cache: 1,
         }),
-        createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+        createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
             .defaultNow()
             .notNull(),
-        processedAt: timestamp('processed_at', { withTimezone: true, mode: 'string' }),
-        payload: jsonb().notNull(),
+        processedAt: timestamp('processed_at', { withTimezone: true, mode: 'date' }),
+        payload: jsonb().$type<IDiscordEmbed>().notNull(),
         attempts: smallint().default(0).notNull(),
         eventState: eventStates('event_state').default('PENDING').notNull(),
         eventVariant: eventVariants('event_variant').notNull(),
