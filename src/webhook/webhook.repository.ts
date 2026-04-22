@@ -6,8 +6,7 @@ import { DEFAULT_BATCH_SIZE, DEFAULT_PAGE } from '@/common/constants'
 import type { PaginationOptions } from '@/common/dto/pagination-options.dto'
 import { DB_DRIZZLE } from '@/database/database.module'
 import { EventStates, EventVariants } from '@/database/types'
-import { DiscordEmbedI } from '@/webhook/interfaces/discord-embed.interface'
-import { IWebhookPayload } from '@/webhook/interfaces/webhook-payload.interface'
+import { WebhookPayloadI } from '@/webhook/interfaces/webhook-payload.interface'
 
 import * as schema from '../database/schema'
 
@@ -30,7 +29,7 @@ export class WebhookRepository implements WebhookRepositoryI {
             .offset(pagination?.page ?? DEFAULT_PAGE)
     }
 
-    async insertEvent(variant: EventVariants, payload: IWebhookPayload): Promise<OutboxItem> {
+    async insertEvent(variant: EventVariants, payload: WebhookPayloadI): Promise<OutboxItem> {
         const [inserted] = await this.db
             .insert(schema.outbox)
             .values({
