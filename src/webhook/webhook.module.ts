@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 
 import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
+import { ApiKeyGuard } from '@/common/guards/api-key.guard'
 import { WebhookEmbedFactory } from '@/webhook/factory/webhook-embed.factory'
 import { WEBHOOK_EMBED_FACTORY } from '@/webhook/interfaces/webhook-embed-factory.interface'
 import { OutboxPoller } from '@/webhook/outbox.poller'
@@ -59,6 +60,7 @@ import { WebhookService } from './webhook.service'
         WebhookEmbedFactory,
         WebhookProcessor,
         OutboxPoller,
+        ApiKeyGuard,
     ],
 })
 export class WebhookModule {}

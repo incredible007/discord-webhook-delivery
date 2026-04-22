@@ -15,6 +15,8 @@ export const envSchema = z.object({
 
     BULL_BOARD_USER: z.string().min(1),
     BULL_BOARD_PASSWORD: z.string().min(1),
+
+    API_KEY: z.string().min(32),
 })
 
 export type Env = z.infer<typeof envSchema>

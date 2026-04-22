@@ -1,6 +1,7 @@
-import { Body, Controller, Inject, Post } from '@nestjs/common'
-import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common'
+import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger'
 
+import { ApiKeyGuard } from '@/common/guards/api-key.guard'
 import { EventVariantValues } from '@/database/types'
 import {
     WEBHOOK_EMBED_FACTORY,
@@ -12,6 +13,7 @@ import { WebhookService } from '../webhook.service'
 
 @ApiTags('webhook')
 @Controller('webhook')
+@UseGuards(ApiKeyGuard)
 export class WebhookController {
     constructor(
         private readonly webhookService: WebhookService,
@@ -21,6 +23,7 @@ export class WebhookController {
 
     @Post('send')
     @ApiOperation({ summary: 'Enqueue a Discord webhook' })
+    @ApiHeader({ name: 'x-api-key', required: true })
     async send(@Body() dto: SendWebhookDto) {
         const payload = this.webhookEmbedFactory.userRegistered(dto.email)
         await this.webhookService.enqueue(EventVariantValues.USER_REGISTERED, payload)
