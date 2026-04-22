@@ -1,8 +1,27 @@
 import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+
+import { appConfig } from './config/app.config'
+import { envSchema } from './config/env.schema'
 import { DatabaseModule } from './database/database.module'
 
 @Module({
-    imports: [DatabaseModule],
+    imports: [
+        ConfigModule.forRoot({
+            isGlobal: true,
+            load: [appConfig],
+            validate: (env) => {
+                const result = envSchema.safeParse(env)
+                if (!result.success) {
+                    console.error('❌ Invalid env:', result.error.flatten().fieldErrors)
+                    process.exit(1)
+                }
+                return result.data
+            },
+        }),
+
+        DatabaseModule,
+    ],
     controllers: [],
     providers: [],
 })
