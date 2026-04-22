@@ -1,9 +1,10 @@
 import { BullModule } from '@nestjs/bullmq'
-import { Injectable, Module } from '@nestjs/common'
+import { Module } from '@nestjs/common'
 
 import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
 import { WebhookEmbedFactory } from '@/webhook/factory/webhook-embed.factory'
 import { WEBHOOK_EMBED_FACTORY } from '@/webhook/interfaces/webhook-embed-factory.interface'
+import { OutboxPoller } from '@/webhook/outbox.poller'
 import { WebhookProcessor } from '@/webhook/webhook.processor'
 
 import { WebhookController } from './controllers/webhook.controller'
@@ -53,6 +54,7 @@ import { WebhookService } from './webhook.service'
 
         WebhookEmbedFactory,
         WebhookProcessor,
+        OutboxPoller,
     ],
 })
 export class WebhookModule {}
