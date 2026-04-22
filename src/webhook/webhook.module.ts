@@ -22,7 +22,9 @@ import { WebhookService } from './webhook.service'
                 backoff: {
                     type: 'custom',
                 },
-                removeOnComplete: true,
+                removeOnComplete: {
+                    count: 100,
+                },
                 removeOnFail: false,
             },
         }),
@@ -34,7 +36,9 @@ import { WebhookService } from './webhook.service'
                 backoff: {
                     type: 'custom',
                 },
-                removeOnComplete: true,
+                removeOnComplete: {
+                    count: 100,
+                },
                 removeOnFail: false,
             },
         }),

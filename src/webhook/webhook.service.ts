@@ -23,9 +23,9 @@ export class WebhookService {
     async enqueue(variant: EventVariants, payload: WebhookPayloadI): Promise<void> {
         const inserted = await this.webhookRepository.insertEvent(variant, payload)
 
-        // await this.webhookQueue.add(WEBHOOK_JOB, {
-        //     payload,
-        //     outboxId: inserted.oid,
-        // })
+        await this.webhookQueue.add(WEBHOOK_JOB, {
+            payload,
+            outboxId: inserted.oid,
+        })
     }
 }
