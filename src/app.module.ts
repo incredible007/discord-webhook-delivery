@@ -2,6 +2,8 @@ import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 
+import { WebhookModule } from '@/webhook/webhook.module'
+
 import { appConfig } from './config/app.config'
 import { envSchema } from './config/env.schema'
 import { DatabaseModule } from './database/database.module'
@@ -32,6 +34,8 @@ import { DatabaseModule } from './database/database.module'
         }),
 
         DatabaseModule,
+
+        WebhookModule,
     ],
     controllers: [],
     providers: [],
