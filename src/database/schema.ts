@@ -10,7 +10,7 @@ import {
     timestamp,
 } from 'drizzle-orm/pg-core'
 
-import { type IDiscordEmbed } from '@/webhook/interfaces/discord-embed.interface'
+import { type IWebhookPayload } from '@/webhook/interfaces/webhook-payload.interface'
 
 export const eventStates = pgEnum('event_states', ['PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED'])
 export const eventVariants = pgEnum('event_variants', ['USER_REGISTERED'])
@@ -31,7 +31,7 @@ export const outbox = pgTable(
             .defaultNow()
             .notNull(),
         processedAt: timestamp('processed_at', { withTimezone: true, mode: 'date' }),
-        payload: jsonb().$type<IDiscordEmbed>().notNull(),
+        payload: jsonb().$type<IWebhookPayload>().notNull(),
         attempts: smallint().default(0).notNull(),
         eventState: eventStates('event_state').default('PENDING').notNull(),
         eventVariant: eventVariants('event_variant').notNull(),

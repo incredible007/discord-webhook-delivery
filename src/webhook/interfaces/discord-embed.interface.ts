@@ -1,4 +1,4 @@
-export interface IDiscordEmbed {
+export interface DiscordEmbedI {
     title: string
     description: string
     color?: number

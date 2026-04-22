@@ -6,16 +6,14 @@ import { DEFAULT_BATCH_SIZE, DEFAULT_PAGE } from '@/common/constants'
 import type { PaginationOptions } from '@/common/dto/pagination-options.dto'
 import { DB_DRIZZLE } from '@/database/database.module'
 import { EventStates, EventVariants } from '@/database/types'
-import { IDiscordEmbed } from '@/webhook/interfaces/discord-embed.interface'
+import { DiscordEmbedI } from '@/webhook/interfaces/discord-embed.interface'
+import { IWebhookPayload } from '@/webhook/interfaces/webhook-payload.interface'
 
 import * as schema from '../database/schema'
 
-import {
-    OutboxItem,
-    type WebhookRepositoryInterface,
-} from './interfaces/webhook-repository.interface'
+import { OutboxItem, type WebhookRepositoryI } from './interfaces/webhook-repository.interface'
 
-export class WebhookRepository implements WebhookRepositoryInterface {
+export class WebhookRepository implements WebhookRepositoryI {
     constructor(
         @Inject(DB_DRIZZLE)
         private readonly db: PostgresJsDatabase<typeof schema>,
@@ -32,7 +30,7 @@ export class WebhookRepository implements WebhookRepositoryInterface {
             .offset(pagination?.page ?? DEFAULT_PAGE)
     }
 
-    async insertEvent(variant: EventVariants, payload: IDiscordEmbed): Promise<OutboxItem> {
+    async insertEvent(variant: EventVariants, payload: IWebhookPayload): Promise<OutboxItem> {
         const [inserted] = await this.db
             .insert(schema.outbox)
             .values({

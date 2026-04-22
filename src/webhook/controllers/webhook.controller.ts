@@ -1,6 +1,8 @@
 import { Body, Controller, Post } from '@nestjs/common'
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
 
+import { EventVariantValues } from '@/database/types'
+
 import { SendWebhookDto } from '../dto/send-webhook.dto'
 import { WebhookService } from '../webhook.service'
 
@@ -12,7 +14,7 @@ export class WebhookController {
     @Post('send')
     @ApiOperation({ summary: 'Enqueue a Discord webhook' })
     async send(@Body() dto: SendWebhookDto) {
-        await this.webhookService.enqueue('USER_REGISTERED', dto)
-        return { queued: true }
+        // await this.webhookService.enqueue(EventVariantValues.USER_REGISTERED, dto)
+        // return { queued: true }
     }
 }
