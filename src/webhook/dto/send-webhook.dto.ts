@@ -1,18 +1,7 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator'
+import { IsEmail, IsNotEmpty } from 'class-validator'
 
 export class SendWebhookDto {
-    @IsString()
+    @IsEmail()
     @IsNotEmpty()
-    title: string
-
-    @IsString()
-    @IsNotEmpty()
-    description: string
-
-    @IsNumber()
-    @IsOptional()
-    color?: number
-
-    @IsOptional()
-    footer?: { text: string }
+    email: string
 }
