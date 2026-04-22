@@ -1,5 +1,5 @@
 import { Inject } from '@nestjs/common'
-import { and, eq, SQL } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 
 import { DEFAULT_BATCH_SIZE, DEFAULT_PAGE } from '@/common/constants'
@@ -18,15 +18,32 @@ export class WebhookRepository implements WebhookRepositoryI {
         private readonly db: PostgresJsDatabase<typeof schema>,
     ) {}
 
-    async fetchPending(conditions: SQL[], pagination?: PaginationOptions): Promise<OutboxItem[]> {
-        const whereCondition = conditions.length > 0 ? and(...conditions) : undefined
+    claimPendingBatch(
+        cb: (res: OutboxItem[]) => Promise<void>,
+        pagination?: PaginationOptions,
+    ): Promise<OutboxItem[]> {
+        return this.db.transaction(async (tx) => {
+            const res = await tx
+                .select()
+                .from(schema.outbox)
+                .where(eq(schema.outbox.eventState, 'PENDING'))
+                .limit(pagination?.limit ?? DEFAULT_BATCH_SIZE)
+                .offset(pagination?.page ?? DEFAULT_PAGE)
+                .for('update')
 
-        return this.db
-            .select()
-            .from(schema.outbox)
-            .where(whereCondition)
-            .limit(pagination?.limit ?? DEFAULT_BATCH_SIZE)
-            .offset(pagination?.page ?? DEFAULT_PAGE)
+            if (res.length === 0) return []
+
+            const oids = res.map((i) => i.oid)
+
+            await tx
+                .update(schema.outbox)
+                .set({ eventState: 'PROCESSING' })
+                .where(inArray(schema.outbox.oid, oids))
+
+            await cb(res)
+
+            return res
+        })
     }
 
     async insertEvent(variant: EventVariants, payload: WebhookPayloadI): Promise<OutboxItem> {
