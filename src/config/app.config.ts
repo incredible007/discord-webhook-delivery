@@ -8,4 +8,6 @@ export const appConfig = registerAs('app', () => ({
 
     bullBoardUser: process.env.BULL_BOARD_USER,
     bullBoardPassword: process.env.BULL_BOARD_PASSWORD,
+
+    apiKey: process.env.API_KEY,
 }))
