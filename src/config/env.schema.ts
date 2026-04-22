@@ -7,6 +7,8 @@ export const envSchema = z.object({
     APP_URL: z.string().url(),
     DB_URL: z.string().url(),
 
+    DISCORD_WEBHOOK_USER_REGISTERED: z.string().url(),
+
     REDIS_HOST: z.string().min(1),
     REDIS_PORT: z.coerce.number().default(6379),
     REDIS_TTL: z.coerce.number().default(300),
