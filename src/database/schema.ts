@@ -7,6 +7,7 @@ import {
     pgEnum,
     pgTable,
     smallint,
+    text,
     timestamp,
 } from 'drizzle-orm/pg-core'
 
@@ -35,6 +36,7 @@ export const outbox = pgTable(
         attempts: smallint().default(0).notNull(),
         eventState: eventStates('event_state').default('PENDING').notNull(),
         eventVariant: eventVariants('event_variant').notNull(),
+        errorMessage: text('error_message'),
     },
     (table) => [
         index('idx_outbox_created_at').using(

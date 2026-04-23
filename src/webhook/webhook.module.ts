@@ -3,10 +3,11 @@ import { Module } from '@nestjs/common'
 
 import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
 import { ApiKeyGuard } from '@/common/guards/api-key.guard'
-import { WebhookEmbedFactory } from '@/webhook/factory/webhook-embed.factory'
+import { WebhookEmbedFactory } from '@/webhook/factories/webhook-embed.factory'
 import { WEBHOOK_EMBED_FACTORY } from '@/webhook/interfaces/webhook-embed-factory.interface'
 import { OutboxPoller } from '@/webhook/outbox.poller'
-import { WebhookProcessor } from '@/webhook/webhook.processor'
+import { DlqProcessor } from '@/webhook/processors/dlq.processor'
+import { WebhookProcessor } from '@/webhook/processors/webhook.processor'
 
 import { WebhookController } from './controllers/webhook.controller'
 import { WEBHOOK_REPOSITORY } from './interfaces/webhook-repository.interface'
@@ -16,33 +17,31 @@ import { WebhookService } from './webhook.service'
 @Module({
     controllers: [WebhookController],
     imports: [
-        BullModule.registerQueue({
-            name: WEBHOOK_QUEUE,
-            defaultJobOptions: {
-                attempts: 10,
-                backoff: {
-                    type: 'custom',
+        BullModule.registerQueue(
+            {
+                name: WEBHOOK_QUEUE,
+                defaultJobOptions: {
+                    attempts: 10,
+                    backoff: {
+                        type: 'custom',
+                    },
+                    removeOnComplete: {
+                        count: 100,
+                    },
+                    removeOnFail: false,
                 },
-                removeOnComplete: {
-                    count: 100,
-                },
-                removeOnFail: false,
             },
-        }),
-
-        BullModule.registerQueue({
-            name: DLQ_QUEUE,
-            defaultJobOptions: {
-                attempts: 10,
-                backoff: {
-                    type: 'custom',
+            {
+                name: DLQ_QUEUE,
+                defaultJobOptions: {
+                    attempts: 1,
+                    removeOnComplete: {
+                        count: 500,
+                    },
+                    removeOnFail: false,
                 },
-                removeOnComplete: {
-                    count: 100,
-                },
-                removeOnFail: false,
             },
-        }),
+        ),
     ],
     providers: [
         WebhookService,
@@ -61,6 +60,7 @@ import { WebhookService } from './webhook.service'
         WebhookProcessor,
         OutboxPoller,
         ApiKeyGuard,
+        DlqProcessor,
     ],
 })
 export class WebhookModule {}
