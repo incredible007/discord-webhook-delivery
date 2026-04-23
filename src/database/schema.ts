@@ -27,7 +27,7 @@ export const outbox = pgTable(
             startWith: 1,
             increment: 1,
             minValue: 1,
-            maxValue: 9223372036854775807,
+            maxValue: '9223372036854775807',
             cache: 1,
         }),
         createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })

@@ -62,7 +62,7 @@ import { DatabaseModule } from './database/database.module'
                         miscLinks: [
                             {
                                 text: 'Swagger',
-                                url: '/api',
+                                url: '/api-doc',
                             },
                         ],
                         favIcon: {

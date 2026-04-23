@@ -1,99 +1,151 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Discord Webhook Delivery Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Микросервис для **надёжной асинхронной доставки Discord-вебхуков** с гарантией at-least-once delivery.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Бизнес-задача:** когда внешнее приложение (например, система регистрации пользователей) хочет отправить уведомление в Discord, прямой HTTP-вызов ненадёжен — Discord может быть недоступен, вернуть rate-limit или временную ошибку. Этот сервис принимает запрос мгновенно, сохраняет его в БД и гарантирует доставку, даже если Discord временно не отвечает.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Архитектура
 
-## Project setup
 
-```bash
-$ npm install
+| Компонент | Ответственность                                                                                                                                         |
+|---|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `WebhookController` | Принимает HTTP-запросы, валидирует DTO, проверяет API-ключ                                                                                              |
+| `WebhookService` | Записывает событие в outbox-таблицу                                                                                                                     |
+| `WebhookRepository` | Вся работа с БД: вставка, claim batch, обновление статусов                                                                                              |
+| `OutboxPoller` | Каждые 2 секунды читает `PENDING`-события из outbox и пушит их в BullMQ, сброс зависших джобов                                                          |
+| `WebhookProcessor` | Забирает джобы из очереди, делает HTTP POST в Discord, обрабатывает rate-limit (429) и ошибки                                                           |
+| `DlqProcessor` | Обрабатывает мёртвые джобы (Dead Letter Queue): записывает причину финального фейла в outbox                                                            |
+| `WebhookEmbedFactory` | Отвечает за формирование Discord embed-объекта под конкретный тип события. Это единственное место, где знают, как событие выглядит визуально в Discord. |
+
+---
+
+## Схема базы данных
+
+> Полная DBML-схема: [dbdiagram.io](https://dbdiagram.io/d/discord-webhook-delivery-69e8e5f41bbca03312144667)
+
+### Таблица `outbox`
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `oid` | `bigint` (PK, identity) | Первичный ключ |
+| `idempotency_key` | `varchar(200)` | Уникальный ключ для идемпотентности |
+| `event_variant` | `enum` | Тип события (`USER_REGISTERED`) |
+| `event_state` | `enum` | Статус: `PENDING` → `PROCESSING` → `SUCCEEDED` / `FAILED` |
+| `payload` | `jsonb` | Данные для отправки в Discord |
+| `attempts` | `smallint` | Счётчик попыток (≥ 0, есть check constraint) |
+| `error_message` | `text` | Причина финального фейла (заполняется DLQ) |
+| `created_at` | `timestamptz` | Дата создания |
+| `processing_at` | `timestamptz` | Когда взято в работу (для детекции зависших) |
+| `processed_at` | `timestamptz` | Когда успешно доставлено |
+
+### Индексы
+
+| Индекс | Тип | Назначение |
+|---|---|---|
+| `idx_outbox_event_state_pending` | **Partial B-tree** (`WHERE event_state = 'PENDING'`) | Быстрый поллинг незаконченных событий, не тратит место на `SUCCEEDED`/`FAILED` |
+| `idx_outbox_created_at` | B-tree по `created_at` | Сортировка и аналитика по времени создания |
+| `idempotency_key_unique` | Unique | Гарантия уникальности на уровне БД (ON CONFLICT DO NOTHING) |
+
+---
+
+## Идемпотентность
+
+При попытке вставить событие с уже существующим `idempotency_key` срабатывает `ON CONFLICT DO NOTHING` на уровне БД, и сервис возвращает `409 Conflict`. Это исключает дублирование доставки даже при повторных запросах от клиента.
+
+Дополнительно, при добавлении джоба в BullMQ используется `jobId: webhook-{idempotencyKey}` — BullMQ не создаст дубль джоба с тем же `jobId`.
+
+---
+
+## Защита API
+
+Все эндпоинты контроллера защищены `ApiKeyGuard`. Ключ передаётся в заголовке:
+
+x-api-key: <your-api-key>
+
+
+Ключ задаётся через переменную окружения и валидируется через `ConfigService`. При неверном или отсутствующем ключе возвращается `401 Unauthorized`.
+
+---
+
+## Переменные окружения
+
+```env
+API_KEY
+
+NODE_ENV
+APP_URL
+PORT
+DB_URL
+
+REDIS_HOST
+REDIS_PORT
+REDIS_TTL
+
+BULL_BOARD_USER
+BULL_BOARD_PASSWORD
+
+DISCORD_WEBHOOK_USER_REGISTERED
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## Почему BullMQ?
 
-# watch mode
-$ npm run start:dev
+- **Персистентность** — очередь хранится в Redis, джобы не теряются при перезапуске
+- **Retry с backoff** — экспоненциальная задержка между попытками (настраивается через `backoffStrategy`)
+- **Rate limiting** — встроенный `limiter` (2 req/s) для соблюдения лимитов Discord API
+- **Delayed jobs** — при получении `429` джоб откладывается на точное время из заголовка `Retry-After`
+- **Dead Letter Queue** — неизлечимые ошибки (`400`, исчерпание попыток) уходят в DLQ для аудита
+- **Bull Board** — готовый UI для мониторинга очередей из коробки
 
-# production mode
-$ npm run start:prod
-```
+Альтернативы (`pg-boss`, самописный cron) не дают такого уровня наблюдаемости и гибкости одновременно.
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## Логирование и мониторинг
 
-# e2e tests
-$ npm run test:e2e
+- **NestJS Logger** — структурированные логи в каждом процессоре: успех, rate-limit warn, финальные ошибки
+- **Bull Board UI** — визуальный мониторинг очередей: `discord-webhook.andrewpodgola.pro/queues`
+- **Health check** — эндпоинт `/health` для проверки состояния сервиса (используется в Docker healthcheck)
+- **Swagger** — документация API: `discord-webhook.andrewpodgola.pro/api-doc`
 
-# test coverage
-$ npm run test:cov
-```
+---
 
-## Deployment
+## Деплой
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Сервис задеплоен на: **[webhook-discord.andrewpodgola.pro](https://webhook-discord.andrewpodgola.pro/)**
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+| Ресурс | URL |
+|---|---|
+| Swagger UI | [webhook-discord.andrewpodgola.pro/api-doc](https://webhook-discord.andrewpodgola.pro/api-doc) |
+| Bull Board | [webhook-discord.andrewpodgola.pro/queues](https://webhook-discord.andrewpodgola.pro/queues) |
 
-```bash
-$ npm install -g mau
-$ mau deploy
-```
+Деплой производится через **Docker + Docker Compose**:
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+bash docker compose up -d --build
 
-## Resources
 
-Check out a few resources that may come in handy when working with NestJS:
+Стек контейнеров:
+- **app** — NestJS-приложение (порт 3000 внутри, проброшен на 24000)
+- **redis** — Redis 7 Alpine для BullMQ (healthcheck через `redis-cli ping`)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Оба контейнера объединены в общую сеть `nestjs-network`. Redis-данные персистируются через named volume `redis_data`. Приложение стартует только после того, как Redis пройдёт healthcheck.
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Пути развития
 
-## Stay in touch
+### Что можно упростить
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- **Убрать outbox-таблицу + OutboxPoller** — если требования к надёжности снижены, можно добавлять джобы напрямую в BullMQ без персистентности в Postgres. Тогда при падении Redis часть сообщений потеряется, но реализация станет значительно проще
+- **Убрать DLQ** — в совсем простом варианте достаточно просто логировать финальные ошибки без отдельной очереди
 
-## License
+### Что можно добавить
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **Поддержка нескольких типов событий** — сейчас реализован только `USER_REGISTERED`. Легко расширяется через новые значения `event_variants` enum и методы в `WebhookEmbedFactory`
+- **Вебхуки для внешних систем** — сейчас URL захардкожен. Можно сделать `url` динамическим полем, принимаемым в запросе
+- **Метрики (Prometheus + Grafana)** — добавить счётчики успешных/упавших доставок, latency, глубину очереди
+- **Retry-политика на уровне DLQ** — сейчас DLQ финален. Можно добавить ручной или автоматический повтор через UI
+- **Архивация завершённых записей** — партиционирование или перенос старых `SUCCEEDED` записей в архивную таблицу, чтобы outbox не разрастался

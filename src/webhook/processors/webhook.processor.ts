@@ -45,6 +45,7 @@ export class WebhookProcessor extends WorkerHost {
 
         if (res.status === 429) {
             const retryAfter = Number(res.headers.get('Retry-After') ?? 1)
+            await this.webhookRepository.updateStatus(outboxId, 'PENDING')
             this.logger.warn(`Rate limited, retry after ${retryAfter}s, outboxId: ${outboxId}`)
             await job.moveToDelayed(Date.now() + retryAfter * 1000)
             throw new DelayedError()
