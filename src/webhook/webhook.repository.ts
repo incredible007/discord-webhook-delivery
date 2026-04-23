@@ -1,5 +1,5 @@
 import { Inject } from '@nestjs/common'
-import { and, eq, inArray, lt, sql } from 'drizzle-orm'
+import { and, eq, inArray, lt } from 'drizzle-orm'
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 
 import { DEFAULT_BATCH_SIZE, DEFAULT_PAGE } from '@/common/constants'
@@ -28,11 +28,8 @@ export class WebhookRepository implements WebhookRepositoryI {
             .where(eq(schema.outbox.oid, oid))
     }
 
-    claimPendingBatch(
-        cb: (res: OutboxItem[]) => Promise<void>,
-        pagination?: PaginationOptions,
-    ): Promise<OutboxItem[]> {
-        return this.db.transaction(async (tx) => {
+    async claimPendingBatch(pagination?: PaginationOptions): Promise<OutboxItem[]> {
+        return await this.db.transaction(async (tx) => {
             const res = await tx
                 .select()
                 .from(schema.outbox)
@@ -52,8 +49,6 @@ export class WebhookRepository implements WebhookRepositoryI {
                     processingAt: new Date(),
                 })
                 .where(inArray(schema.outbox.oid, oids))
-
-            await cb(res)
 
             return res
         })

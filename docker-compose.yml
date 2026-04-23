@@ -19,9 +19,9 @@ services:
 
   app:
     build: .
-    container_name: nestjs-app-prod
+    container_name: discord_webhook_delivery
     ports:
-      - "3000:3000"
+      - "24000:3000"
     env_file: .env
     depends_on:
       redis:

@@ -6,10 +6,7 @@ import { type WebhookPayloadI } from '@/webhook/interfaces/webhook-payload.inter
 export type OutboxItem = typeof schema.outbox.$inferSelect
 
 export interface WebhookRepositoryI {
-    claimPendingBatch(
-        cb: (res: OutboxItem[]) => Promise<void>,
-        pagination?: PaginationOptions,
-    ): Promise<OutboxItem[]>
+    claimPendingBatch(pagination?: PaginationOptions): Promise<OutboxItem[]>
     insertEvent(variant: EventVariants, payload: WebhookPayloadI): Promise<OutboxItem | undefined>
     updateStatus(oid: number, status: EventStates): Promise<void>
     markProcessed(oid: number): Promise<void>

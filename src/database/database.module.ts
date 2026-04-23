@@ -15,7 +15,12 @@ export const DB_DRIZZLE = Symbol.for('DB_DRIZZLE')
             inject: [ConfigService],
             useFactory: (configService: ConfigService): PostgresJsDatabase<typeof schema> => {
                 const url = configService.get<string>('DB_URL')!
-                const client = postgres(url)
+                const client = postgres(url, {
+                    max: 10,
+                    idle_timeout: 20,
+                    max_lifetime: 1800,
+                    connect_timeout: 10,
+                })
                 return drizzle(client, { schema })
             },
         },

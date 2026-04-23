@@ -7,6 +7,7 @@ import { BullBoardModule } from '@bull-board/nestjs'
 import * as expressBasicAuth from 'express-basic-auth'
 
 import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
+import { redisConfig } from '@/config/redis.config'
 import { HealthModule } from '@/health/health.module'
 import { WebhookModule } from '@/webhook/webhook.module'
 
@@ -18,7 +19,7 @@ import { DatabaseModule } from './database/database.module'
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            load: [appConfig],
+            load: [appConfig, redisConfig],
             validate: (env) => {
                 const result = envSchema.safeParse(env)
                 if (!result.success) {
