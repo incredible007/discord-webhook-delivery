@@ -1,5 +1,5 @@
 import { Inject } from '@nestjs/common'
-import { eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, lt, sql } from 'drizzle-orm'
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 
 import { DEFAULT_BATCH_SIZE, DEFAULT_PAGE } from '@/common/constants'
@@ -47,7 +47,10 @@ export class WebhookRepository implements WebhookRepositoryI {
 
             await tx
                 .update(schema.outbox)
-                .set({ eventState: 'PROCESSING' })
+                .set({
+                    eventState: 'PROCESSING',
+                    processingAt: new Date(),
+                })
                 .where(inArray(schema.outbox.oid, oids))
 
             await cb(res)
@@ -89,5 +92,22 @@ export class WebhookRepository implements WebhookRepositoryI {
                 processedAt: new Date(),
             })
             .where(eq(schema.outbox.oid, id))
+    }
+
+    async resetStuckJobs(timeoutMinutes: number = 5): Promise<void> {
+        const timeout = new Date(Date.now() - timeoutMinutes * 60 * 1000)
+
+        await this.db
+            .update(schema.outbox)
+            .set({
+                eventState: 'PENDING',
+                processingAt: null,
+            })
+            .where(
+                and(
+                    eq(schema.outbox.eventState, 'PROCESSING'),
+                    lt(schema.outbox.processingAt, timeout),
+                ),
+            )
     }
 }
