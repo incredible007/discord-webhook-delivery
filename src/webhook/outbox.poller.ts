@@ -41,10 +41,16 @@ export class OutboxPoller implements OnModuleDestroy, OnModuleInit {
     private async poll() {
         await this.webhookRepository.claimPendingBatch(async (res) => {
             for (const item of res) {
-                await this.webhookQueue.add(WEBHOOK_JOB, {
-                    payload: item.payload,
-                    outboxId: item.oid,
-                })
+                await this.webhookQueue.add(
+                    WEBHOOK_JOB,
+                    {
+                        payload: item.payload,
+                        outboxId: item.oid,
+                    },
+                    {
+                        jobId: `webhook-${item.idempotencyKey}`,
+                    },
+                )
             }
         })
     }

@@ -45,6 +45,10 @@ export class WebhookController {
         status: HttpStatus.BAD_REQUEST,
         description: 'Невалидные данные запроса',
     })
+    @ApiResponse({
+        status: HttpStatus.CONFLICT,
+        description: 'Вебхук с таким ключом уже существует',
+    })
     async send(@Body() dto: SendWebhookDto) {
         const payload = this.webhookEmbedFactory.userRegistered(dto.email)
         await this.webhookService.enqueue(EventVariantValues.USER_REGISTERED, payload)

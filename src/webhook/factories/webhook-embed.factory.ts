@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 
+import { EventVariantValues } from '@/database/types'
 import { WebhookEmbedFactoryI } from '@/webhook/interfaces/webhook-embed-factory.interface'
 import { type WebhookPayloadI } from '@/webhook/interfaces/webhook-payload.interface'
 
@@ -20,6 +21,7 @@ export class WebhookEmbedFactory implements WebhookEmbedFactoryI {
         const url = this.configService.getOrThrow<string>('app.discordWebhookUserRegistered')
 
         return {
+            idempotencyKey: `${EventVariantValues.USER_REGISTERED}_${email}`,
             url,
             embed: {
                 title: '🎉 Новая регистрация',

@@ -9,6 +9,8 @@ import {
     smallint,
     text,
     timestamp,
+    unique,
+    varchar,
 } from 'drizzle-orm/pg-core'
 
 import { type WebhookPayloadI } from '@/webhook/interfaces/webhook-payload.interface'
@@ -37,12 +39,14 @@ export const outbox = pgTable(
         eventState: eventStates('event_state').default('PENDING').notNull(),
         eventVariant: eventVariants('event_variant').notNull(),
         errorMessage: text('error_message'),
+        idempotencyKey: varchar('idempotency_key', { length: 200 }).notNull(),
     },
     (table) => [
         index('idx_outbox_created_at').using(
             'btree',
             table.createdAt.asc().nullsLast().op('timestamptz_ops'),
         ),
+        unique('idempotency_key_unique').on(table.idempotencyKey),
         index('idx_outbox_event_state_pending')
             .using('btree', table.eventState.asc().nullsLast().op('enum_ops'))
             .where(sql`(event_state = 'PENDING'::event_states)`),

@@ -10,7 +10,7 @@ export interface WebhookRepositoryI {
         cb: (res: OutboxItem[]) => Promise<void>,
         pagination?: PaginationOptions,
     ): Promise<OutboxItem[]>
-    insertEvent(variant: EventVariants, payload: WebhookPayloadI): Promise<OutboxItem>
+    insertEvent(variant: EventVariants, payload: WebhookPayloadI): Promise<OutboxItem | undefined>
     updateStatus(oid: number, status: EventStates): Promise<void>
     markProcessed(oid: number): Promise<void>
     updateError(oid: number, errorMessage: string): Promise<void>

@@ -1,5 +1,5 @@
 import { Inject } from '@nestjs/common'
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 
 import { DEFAULT_BATCH_SIZE, DEFAULT_PAGE } from '@/common/constants'
@@ -39,7 +39,7 @@ export class WebhookRepository implements WebhookRepositoryI {
                 .where(eq(schema.outbox.eventState, 'PENDING'))
                 .limit(pagination?.limit ?? DEFAULT_BATCH_SIZE)
                 .offset(pagination?.page ?? DEFAULT_PAGE)
-                .for('update')
+                .for('update', { skipLocked: true })
 
             if (res.length === 0) return []
 
@@ -56,14 +56,19 @@ export class WebhookRepository implements WebhookRepositoryI {
         })
     }
 
-    async insertEvent(variant: EventVariants, payload: WebhookPayloadI): Promise<OutboxItem> {
+    async insertEvent(
+        variant: EventVariants,
+        payload: WebhookPayloadI,
+    ): Promise<OutboxItem | undefined> {
         const [inserted] = await this.db
             .insert(schema.outbox)
             .values({
+                idempotencyKey: payload.idempotencyKey,
                 eventVariant: variant,
                 payload,
                 eventState: 'PENDING',
             })
+            .onConflictDoNothing()
             .returning()
 
         return inserted
