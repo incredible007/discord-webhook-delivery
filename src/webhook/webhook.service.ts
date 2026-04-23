@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable } from '@nestjs/common'
+import { ConflictException, Inject, Injectable } from '@nestjs/common'
 import { Queue } from 'bullmq'
 
 import { WEBHOOK_JOB, WEBHOOK_QUEUE } from '@/common/constants'
@@ -23,9 +23,8 @@ export class WebhookService {
     async enqueue(variant: EventVariants, payload: WebhookPayloadI): Promise<void> {
         const inserted = await this.webhookRepository.insertEvent(variant, payload)
 
-        await this.webhookQueue.add(WEBHOOK_JOB, {
-            payload,
-            outboxId: inserted.oid,
-        })
+        if (!inserted) {
+            throw new ConflictException(`Webhook with key ${payload.idempotencyKey} already exists`)
+        }
     }
 }
