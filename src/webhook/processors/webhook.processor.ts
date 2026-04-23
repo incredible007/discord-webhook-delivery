@@ -1,8 +1,9 @@
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject, Logger } from '@nestjs/common'
-import { Job, Queue, UnrecoverableError } from 'bullmq'
+import { DelayedError, Job, Queue, UnrecoverableError } from 'bullmq'
 
 import { DLQ_JOB, DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
+import { DISCORD_WEBHOOK_BODY } from '@/common/constants/discord.constants'
 import { EventStatesValues } from '@/database/types'
 import { DlqJobPayloadI } from '@/webhook/interfaces/dlq-job-payload.interface'
 import { WebhookJobPayloadI } from '@/webhook/interfaces/webhook-job-payload.interface'
@@ -11,20 +12,9 @@ import {
     WebhookRepositoryI,
 } from '@/webhook/interfaces/webhook-repository.interface'
 
-@Processor(WEBHOOK_QUEUE, {
-    limiter: {
-        max: 2,
-        duration: 1000,
-    },
-})
+@Processor(WEBHOOK_QUEUE)
 export class WebhookProcessor extends WorkerHost {
     private readonly logger = new Logger(WebhookProcessor.name)
-
-    private readonly WEBHOOK_BODY = {
-        content: '',
-        tts: false,
-        components: [],
-    }
 
     constructor(
         @InjectQueue(DLQ_QUEUE)
@@ -42,7 +32,7 @@ export class WebhookProcessor extends WorkerHost {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                ...this.WEBHOOK_BODY,
+                ...DISCORD_WEBHOOK_BODY,
                 embeds: [payload.embed],
             }),
         })
@@ -56,7 +46,8 @@ export class WebhookProcessor extends WorkerHost {
         if (res.status === 429) {
             const retryAfter = Number(res.headers.get('Retry-After') ?? 1)
             this.logger.warn(`Rate limited, retry after ${retryAfter}s, outboxId: ${outboxId}`)
-            throw new Error(`Rate limited. Retry after ${retryAfter}s`)
+            await job.moveToDelayed(Date.now() + retryAfter * 1000)
+            throw new DelayedError()
         }
 
         if (res.status === 400) {

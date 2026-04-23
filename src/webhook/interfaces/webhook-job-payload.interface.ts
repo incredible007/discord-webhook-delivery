@@ -3,4 +3,5 @@ import { type WebhookPayloadI } from '@/webhook/interfaces/webhook-payload.inter
 export interface WebhookJobPayloadI {
     payload: WebhookPayloadI
     outboxId: number
+    retryAfter?: number
 }
