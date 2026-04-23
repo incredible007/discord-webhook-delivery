@@ -18,6 +18,16 @@ export class WebhookRepository implements WebhookRepositoryI {
         private readonly db: PostgresJsDatabase<typeof schema>,
     ) {}
 
+    async updateError(oid: number, errorMessage: string): Promise<void> {
+        await this.db
+            .update(schema.outbox)
+            .set({
+                eventState: 'FAILED',
+                errorMessage,
+            })
+            .where(eq(schema.outbox.oid, oid))
+    }
+
     claimPendingBatch(
         cb: (res: OutboxItem[]) => Promise<void>,
         pagination?: PaginationOptions,

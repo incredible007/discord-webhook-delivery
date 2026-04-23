@@ -2,9 +2,9 @@ import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject, Logger } from '@nestjs/common'
 import { Job, Queue, UnrecoverableError } from 'bullmq'
 
-import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
+import { DLQ_JOB, DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
 import { EventStatesValues } from '@/database/types'
-import { DlqJobPayloadI } from '@/dlq/dlq-job-payload.interface'
+import { DlqJobPayloadI } from '@/webhook/interfaces/dlq-job-payload.interface'
 import { WebhookJobPayloadI } from '@/webhook/interfaces/webhook-job-payload.interface'
 import {
     WEBHOOK_REPOSITORY,
@@ -62,12 +62,22 @@ export class WebhookProcessor extends WorkerHost {
         if (res.status === 400) {
             this.logger.error(`Invalid webhook payload, outboxId: ${outboxId}`)
             await this.webhookRepository.updateStatus(outboxId, EventStatesValues.FAILED)
+            await this.dlQueue.add(DLQ_JOB, {
+                originalJob: job.data,
+                reason: 'Invalid webhook payload (400)',
+                failedAt: new Date(),
+            })
             throw new UnrecoverableError('Invalid webhook payload')
         }
 
         const isLastAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 0)
         if (isLastAttempt) {
             await this.webhookRepository.updateStatus(outboxId, EventStatesValues.FAILED)
+            await this.dlQueue.add(DLQ_JOB, {
+                originalJob: job.data,
+                reason: `Exhausted all ${job.opts.attempts} attempts`,
+                failedAt: new Date(),
+            })
         }
 
         throw new Error(`Unexpected response status: ${res.status}`)

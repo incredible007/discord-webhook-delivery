@@ -11,8 +11,9 @@ export interface WebhookRepositoryI {
         pagination?: PaginationOptions,
     ): Promise<OutboxItem[]>
     insertEvent(variant: EventVariants, payload: WebhookPayloadI): Promise<OutboxItem>
-    updateStatus(id: number, status: EventStates): Promise<void>
-    markProcessed(id: number): Promise<void>
+    updateStatus(oid: number, status: EventStates): Promise<void>
+    markProcessed(oid: number): Promise<void>
+    updateError(oid: number, errorMessage: string): Promise<void>
 }
 
 export const WEBHOOK_REPOSITORY = Symbol.for('WebhookRepositoryInterface')
