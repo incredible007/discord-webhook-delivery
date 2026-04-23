@@ -1,5 +1,6 @@
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
+import { QueueOptions } from 'bullmq'
 
 import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
 import { ApiKeyGuard } from '@/common/guards/api-key.guard'
@@ -20,6 +21,14 @@ import { WebhookService } from './webhook.service'
         BullModule.registerQueue(
             {
                 name: WEBHOOK_QUEUE,
+                ...({
+                    limiter: { max: 2, duration: 1000 },
+                    settings: {
+                        backoffStrategy: (attemptsMade: number) => {
+                            return Math.pow(2, attemptsMade) * 1000
+                        },
+                    },
+                } as Partial<QueueOptions>),
                 defaultJobOptions: {
                     attempts: 10,
                     backoff: {
@@ -56,7 +65,6 @@ import { WebhookService } from './webhook.service'
             useClass: WebhookEmbedFactory,
         },
 
-        WebhookEmbedFactory,
         WebhookProcessor,
         OutboxPoller,
         ApiKeyGuard,
