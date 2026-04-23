@@ -7,6 +7,7 @@ import { BullBoardModule } from '@bull-board/nestjs'
 import * as expressBasicAuth from 'express-basic-auth'
 
 import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
+import { HealthModule } from '@/health/health.module'
 import { WebhookModule } from '@/webhook/webhook.module'
 
 import { appConfig } from './config/app.config'
@@ -51,16 +52,16 @@ import { DatabaseModule } from './database/database.module'
                 }),
                 options: {
                     uiConfig: {
-                        boardTitle: 'Discord Webhook Delivery', // название в заголовке
+                        boardTitle: 'Discord Webhook Delivery',
                         boardLogo: {
-                            path: 'https://discord.com/assets/discord-mark-blue.svg', // логотип
+                            path: 'https://discord.com/assets/discord-mark-blue.svg',
                             width: 30,
                             height: 30,
                         },
                         miscLinks: [
                             {
                                 text: 'Swagger',
-                                url: '/api', // ссылка на твой Swagger
+                                url: '/api',
                             },
                         ],
                         favIcon: {
@@ -86,6 +87,8 @@ import { DatabaseModule } from './database/database.module'
         DatabaseModule,
 
         WebhookModule,
+
+        HealthModule,
     ],
     controllers: [],
     providers: [],
