@@ -34,6 +34,7 @@ export const outbox = pgTable(
             .defaultNow()
             .notNull(),
         processedAt: timestamp('processed_at', { withTimezone: true, mode: 'date' }),
+        processingAt: timestamp('processing_at', { withTimezone: true, mode: 'date' }),
         payload: jsonb().$type<WebhookPayloadI>().notNull(),
         attempts: smallint().default(0).notNull(),
         eventState: eventStates('event_state').default('PENDING').notNull(),

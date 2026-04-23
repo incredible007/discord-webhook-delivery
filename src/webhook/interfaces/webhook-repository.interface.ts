@@ -14,6 +14,7 @@ export interface WebhookRepositoryI {
     updateStatus(oid: number, status: EventStates): Promise<void>
     markProcessed(oid: number): Promise<void>
     updateError(oid: number, errorMessage: string): Promise<void>
+    resetStuckJobs(timeoutMinutes: number): Promise<void>
 }
 
 export const WEBHOOK_REPOSITORY = Symbol.for('WebhookRepositoryInterface')
