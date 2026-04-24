@@ -2,8 +2,14 @@ import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject, Logger } from '@nestjs/common'
 import { DelayedError, Job, Queue, UnrecoverableError } from 'bullmq'
 
-import { DLQ_JOB, DLQ_QUEUE, WEBHOOK_USER_REGISTERED_QUEUE } from '@/common/constants'
-import { DISCORD_WEBHOOK_BODY } from '@/common/constants/discord.constants'
+import {
+    DISCORD_WEBHOOK_BODY,
+    DLQ_JOB,
+    DLQ_QUEUE,
+    WEBHOOK_RATE_LIMIT_DURATION_MS,
+    WEBHOOK_RATE_LIMIT_MAX,
+    WEBHOOK_USER_REGISTERED_QUEUE,
+} from '@/common/constants'
 import { exponentialBackoffWithJitter } from '@/common/utils/backoff.utils'
 import { EventStatesValues } from '@/database/types'
 import { DlqJobPayloadI } from '@/webhook/interfaces/dlq-job-payload.interface'
@@ -14,7 +20,10 @@ import {
 } from '@/webhook/interfaces/webhook-repository.interface'
 
 @Processor(WEBHOOK_USER_REGISTERED_QUEUE, {
-    limiter: { max: 2, duration: 1000 },
+    limiter: {
+        max: WEBHOOK_RATE_LIMIT_MAX,
+        duration: WEBHOOK_RATE_LIMIT_DURATION_MS,
+    },
     settings: {
         backoffStrategy: exponentialBackoffWithJitter,
     },
