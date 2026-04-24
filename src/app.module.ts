@@ -6,7 +6,7 @@ import { ExpressAdapter } from '@bull-board/express'
 import { BullBoardModule } from '@bull-board/nestjs'
 import * as expressBasicAuth from 'express-basic-auth'
 
-import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
+import { DLQ_QUEUE, WEBHOOK_USER_REGISTERED_QUEUE } from '@/common/constants'
 import { redisConfig } from '@/config/redis.config'
 import { HealthModule } from '@/health/health.module'
 import { WebhookModule } from '@/webhook/webhook.module'
@@ -76,7 +76,7 @@ import { DatabaseModule } from './database/database.module'
         }),
 
         BullBoardModule.forFeature({
-            name: WEBHOOK_QUEUE,
+            name: WEBHOOK_USER_REGISTERED_QUEUE,
             adapter: BullMQAdapter,
         }),
 

@@ -2,13 +2,13 @@ import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { QueueOptions } from 'bullmq'
 
-import { DLQ_QUEUE, WEBHOOK_QUEUE } from '@/common/constants'
+import { DLQ_QUEUE, WEBHOOK_USER_REGISTERED_QUEUE } from '@/common/constants'
 import { ApiKeyGuard } from '@/common/guards/api-key.guard'
 import { WebhookEmbedFactory } from '@/webhook/factories/webhook-embed.factory'
 import { WEBHOOK_EMBED_FACTORY } from '@/webhook/interfaces/webhook-embed-factory.interface'
 import { OutboxPoller } from '@/webhook/outbox.poller'
 import { DlqProcessor } from '@/webhook/processors/dlq.processor'
-import { WebhookProcessor } from '@/webhook/processors/webhook.processor'
+import { WebhookUserRegisteredProcessor } from '@/webhook/processors/webhook-user-registered.processor'
 
 import { WebhookController } from './controllers/webhook.controller'
 import { WEBHOOK_REPOSITORY } from './interfaces/webhook-repository.interface'
@@ -20,14 +20,9 @@ import { WebhookService } from './webhook.service'
     imports: [
         BullModule.registerQueue(
             {
-                name: WEBHOOK_QUEUE,
+                name: WEBHOOK_USER_REGISTERED_QUEUE,
                 ...({
                     limiter: { max: 2, duration: 1000 },
-                    settings: {
-                        backoffStrategy: (attemptsMade: number) => {
-                            return Math.pow(2, attemptsMade) * 1000
-                        },
-                    },
                 } as Partial<QueueOptions>),
                 defaultJobOptions: {
                     attempts: 10,
@@ -65,7 +60,7 @@ import { WebhookService } from './webhook.service'
             useClass: WebhookEmbedFactory,
         },
 
-        WebhookProcessor,
+        WebhookUserRegisteredProcessor,
         OutboxPoller,
         ApiKeyGuard,
         DlqProcessor,

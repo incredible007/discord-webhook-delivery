@@ -2,7 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common'
 import { Queue } from 'bullmq'
 
-import { WEBHOOK_JOB, WEBHOOK_QUEUE } from '@/common/constants'
+import { WEBHOOK_USER_REGISTERED_JOB, WEBHOOK_USER_REGISTERED_QUEUE } from '@/common/constants'
 import { WebhookJobPayloadI } from '@/webhook/interfaces/webhook-job-payload.interface'
 import {
     WEBHOOK_REPOSITORY,
@@ -16,8 +16,8 @@ export class OutboxPoller implements OnModuleDestroy, OnModuleInit {
     private readonly logger = new Logger(OutboxPoller.name)
 
     constructor(
-        @InjectQueue(WEBHOOK_QUEUE)
-        private readonly webhookQueue: Queue<WebhookJobPayloadI>,
+        @InjectQueue(WEBHOOK_USER_REGISTERED_QUEUE)
+        private readonly webhookUserRegisteredQueue: Queue<WebhookJobPayloadI>,
         @Inject(WEBHOOK_REPOSITORY)
         private readonly webhookRepository: WebhookRepositoryI,
     ) {}
@@ -47,8 +47,8 @@ export class OutboxPoller implements OnModuleDestroy, OnModuleInit {
             const res = await this.webhookRepository.claimPendingBatch()
 
             for (const item of res) {
-                await this.webhookQueue.add(
-                    WEBHOOK_JOB,
+                await this.webhookUserRegisteredQueue.add(
+                    WEBHOOK_USER_REGISTERED_JOB,
                     {
                         payload: item.payload,
                         outboxId: item.oid,
