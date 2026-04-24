@@ -21,9 +21,6 @@ import { WebhookService } from './webhook.service'
         BullModule.registerQueue(
             {
                 name: WEBHOOK_USER_REGISTERED_QUEUE,
-                ...({
-                    limiter: { max: 2, duration: 1000 },
-                } as Partial<QueueOptions>),
                 defaultJobOptions: {
                     attempts: 10,
                     backoff: {

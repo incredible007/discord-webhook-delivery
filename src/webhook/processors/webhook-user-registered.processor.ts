@@ -14,6 +14,7 @@ import {
 } from '@/webhook/interfaces/webhook-repository.interface'
 
 @Processor(WEBHOOK_USER_REGISTERED_QUEUE, {
+    limiter: { max: 2, duration: 1000 },
     settings: {
         backoffStrategy: exponentialBackoffWithJitter,
     },
