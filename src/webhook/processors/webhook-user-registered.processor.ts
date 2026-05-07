@@ -50,7 +50,7 @@ export class WebhookUserRegisteredProcessor extends WorkerHost {
                 ...DISCORD_WEBHOOK_BODY,
                 embeds: [payload.embed],
             }),
-            signal: AbortSignal.timeout(5000),
+            signal: AbortSignal.timeout(5_000),
         })
 
         if (res.ok) {
@@ -62,7 +62,7 @@ export class WebhookUserRegisteredProcessor extends WorkerHost {
         if (res.status === 429) {
             const retryAfter = Number(res.headers.get('Retry-After') ?? 1)
             this.logger.warn(`Rate limited, retry after ${retryAfter}s, outboxId: ${outboxId}`)
-            await job.moveToDelayed(Date.now() + retryAfter * 1000)
+            await job.moveToDelayed(Date.now() + retryAfter * 1_000)
             throw new DelayedError()
         }
 

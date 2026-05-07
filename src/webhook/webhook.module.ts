@@ -1,6 +1,5 @@
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
-import { QueueOptions } from 'bullmq'
 
 import { DLQ_QUEUE, WEBHOOK_USER_REGISTERED_QUEUE } from '@/common/constants'
 import { ApiKeyGuard } from '@/common/guards/api-key.guard'

@@ -1,33 +1,14 @@
 version: '3.8'
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: nestjs-redis-prod
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - nestjs-network
-    restart: unless-stopped
-
   app:
     build: .
     container_name: discord_webhook_delivery
     ports:
       - "24000:3000"
     env_file: .env
-    depends_on:
-      redis:
-        condition: service_healthy
     networks:
-      - nestjs-network
+      - infra-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1"]
@@ -37,8 +18,5 @@ services:
       start_period: 40s
 
 networks:
-  nestjs-network:
-    driver: bridge
-
-volumes:
-  redis_data:
+  infra-network:
+    external: true
